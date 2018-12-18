@@ -24,10 +24,20 @@ int figures[7][4] =
 	2,3,4,5, // O
 };
 
+bool check()
+{
+	for (int i = 0; i < 4; i++)
+		if (a[i].x < 0 || a[i].x >= N || a[i].y >= M) return 0;
+		else if (field[a[i].y][a[i].x]) return 0;
+
+	return 1;
+}
+
 int main()
 {
+	srand(time(0));
 	RenderWindow window(sf::VideoMode(320, 480), "The Game!");
-	
+
 	Texture t;
 	t.loadFromFile("images/tiles.png");
 
@@ -35,13 +45,20 @@ int main()
 	s.setTextureRect(IntRect(0, 0, 18, 18));
 
 	int dx = 0; bool rotate = 0; int colorNum = 1;
+	float timer = 0, delay = 0.3;
+
+	Clock clock;
 
 	while (window.isOpen())
 	{
+		float time = clock.getElapsedTime().asSeconds();
+		clock.restart();
+		timer += time;
+
 		Event e;
 		while (window.pollEvent(e))
 		{
-			if(e.type == Event::Closed)
+			if (e.type == Event::Closed)
 				window.close();
 			if (e.type == Event::KeyPressed)
 				if (e.key.code == Keyboard::Up) rotate = true;
@@ -49,10 +66,16 @@ int main()
 				else if (e.key.code == Keyboard::Right) dx = 1;
 		}
 
+		if (Keyboard::isKeyPressed(Keyboard::Down)) delay = 0.05;
+
 		// <- Move - > //
 		for (int i = 0; i < 4; i++)
+		{
+			b[i] = a[i];
 			a[i].x += dx;
-		// Rotate
+		}
+		if (!check()) for (int i = 0; i < 4; i++) a[i] = b[i];
+		// Rotate // 
 		if (rotate)
 		{
 			Point p = a[1]; // center of rotation
@@ -63,29 +86,68 @@ int main()
 				a[i].x = p.x - x;
 				a[i].y = p.y + y;
 			}
+			if (!check()) for (int i = 0; i < 4; i++) a[i] = b[i];
 		}
 
-
-
-		int n = 3;
-		if(a[0].x==0)
-		for (int i = 0; i < 4; i++)
+		// Tick // 
+		if (timer > delay)
 		{
-			a[i].x = figures[n][i] % 2;
-			a[i].y = figures[n][i] / 2;
+			for (int i = 0; i < 4; i++) { b[i] = a[i]; a[i].y += 1; }
+
+			if (!check())
+			{
+				for (int i = 0; i < 4; i++) field[b[i].y][b[i].x] = colorNum;
+
+				colorNum = 1 + rand() % 7;
+				int n = rand() % 7;
+				for (int i = 0; i < 4; i++)
+				{
+					a[i].x = figures[n][i] % 2;
+					a[i].y = figures[n][i] / 2;
+				}
+			}
+
+			timer = 0;
 		}
 
-		dx = 0; rotate = 0;
+		/// Check lines ///
+		int k = M - 1;
+		for (int i = M - 1; i > 0; i--)
+		{
+			int count = 0;
+			for (int j = 0; j < N; j++)
+			{
+				if (field[i][j]) count++;
+				field[k][j] = field[i][j];
+			}
+			if (count < N) k--;
+		}
 
 
 
+		dx = 0; rotate = 0; delay = 0.3;
+
+		/// Draw /// 
 		window.clear(Color::White);
+
+		for (int i = 0; i < M; i++)
+			for (int j = 0; j < N; j++)
+			{
+				if (field[i][j] == 0) continue;
+				s.setTextureRect(IntRect(field[i][j] * 18, 0, 18, 18));
+				s.setPosition(j * 18, i * 18);
+				window.draw(s);
+			}
+
+
+
 		for (int i = 0; i < 4; i++)
 		{
+			s.setTextureRect(IntRect(colorNum * 18, 0, 18, 18));
 			s.setPosition(a[i].x * 18, a[i].y * 18);
 			window.draw(s);
 		}
 		window.display();
 	}
 	return 0;
-} 
+}
